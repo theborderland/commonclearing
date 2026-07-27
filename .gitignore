@@ -1,0 +1,23 @@
+# Secrets — never commit
+*.env
+.env
+.env.*
+!.env.template
+dns/creds.local.json
+
+# Rust
+/target
+**/*.rs.bk
+
+# Node
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# oxigraph data
+/data
+*.oxigraph
+
+# OS
+.DS_Store
