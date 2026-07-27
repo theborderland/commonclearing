@@ -301,12 +301,15 @@ platform).
   so oxigraph cannot scale horizontally. Acceptable: the dataset is small and the
   availability requirement is modest.
 
-  There is **one** running instance, serving The Borderland. It answers on two hostnames:
-  `clearing.theborderland.se` (primary, and the `aud` claim value) and
-  `app.commonclearing.org` (convenience alias). It is not a separate general-purpose demo —
-  `required_burn_slug` scopes it to Borderland 2026, so a visitor without a Borderland
-  membership cannot use it under either name. A neutral public demo would need its own app
-  and its own identity provider; that is out of scope.
+  There is **one** running instance, serving The Borderland, on the single hostname
+  `clearing.theborderland.se` — which is also the `aud` claim value. It lives on
+  Borderland's domain because `required_burn_slug` scopes it to Borderland 2026
+  memberships; it is their instance, not a general service.
+
+  `commonclearing.org` therefore carries only the project website. There is deliberately no
+  `app.` subdomain: it would present a login wall for an event most visitors are not members
+  of. A future global instance that anyone can sign up to would need its own Fly app and its
+  own identity provider — a separate deliverable, designed when wanted, not a DNS record.
 - App `commonclearing-website`: static, same org.
 - Multi-stage Dockerfile: Rust build + web build.
 - Secrets: `OPENAI_API_KEY`, `SMTP_*` (shared with theglobalburn, per instruction), VAPID

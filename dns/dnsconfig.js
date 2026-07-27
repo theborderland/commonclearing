@@ -18,7 +18,6 @@ var CF = NewDnsProvider("cloudflare");
 // Fly's IPs (which are not guaranteed stable).
 // ---------------------------------------------------------------------------
 var WEBSITE_FLY = "commonclearing-website.fly.dev";
-var APP_FLY = "commonclearing.fly.dev";
 
 D(
   "commonclearing.org",
@@ -29,11 +28,15 @@ D(
   ALIAS("@", WEBSITE_FLY + "."),
   CNAME("www", WEBSITE_FLY + "."),
 
-  // --- hosted instance of the app ------------------------------------------
-  // Convenience alias for the single running instance, whose primary hostname
-  // is clearing.theborderland.se. Not a separate deployment: that instance is
-  // scoped to Borderland 2026 memberships under either name.
-  CNAME("app", APP_FLY + "."),
+  // --- no app subdomain, deliberately --------------------------------------
+  // The only running instance is The Borderland's, and it lives on their
+  // domain at clearing.theborderland.se because it is scoped to Borderland
+  // 2026 memberships. Pointing app.commonclearing.org at it would show a
+  // login wall for an event most visitors are not members of.
+  //
+  // A future global instance that anyone can sign up to would need its own
+  // Fly app and its own identity provider, at which point it gets designed
+  // properly rather than added as a CNAME.
 
   // --- certificate authority authorisation ---------------------------------
   // Only Let's Encrypt may issue. Fly uses Let's Encrypt for its certs.
