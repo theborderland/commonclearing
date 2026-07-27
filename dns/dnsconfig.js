@@ -17,8 +17,8 @@ var CF = NewDnsProvider("cloudflare");
 // flattens the apex CNAME, so both can point at *.fly.dev without hardcoding
 // Fly's IPs (which are not guaranteed stable).
 // ---------------------------------------------------------------------------
-var WEBSITE_FLY = "common-clearing-website.fly.dev";
-var APP_FLY = "common-clearing.fly.dev";
+var WEBSITE_FLY = "commonclearing-website.fly.dev";
+var APP_FLY = "commonclearing.fly.dev";
 
 D(
   "commonclearing.org",

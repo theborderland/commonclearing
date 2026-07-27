@@ -22,7 +22,7 @@ must never be written to a file in this repo.
 2. Copy the Account ID from the Cloudflare dashboard sidebar (Workers & Pages → Overview,
    or any zone's right-hand column).
 
-3. Put both in a file outside this repo, e.g. `~/.config/common-clearing/dns.env`:
+3. Put both in a file outside this repo, e.g. `~/.config/commonclearing/dns.env`:
 
    ```sh
    export CLOUDFLARE_API_TOKEN='...'
@@ -34,7 +34,7 @@ must never be written to a file in this repo.
 ## Usage
 
 ```sh
-source ~/.config/common-clearing/dns.env
+source ~/.config/commonclearing/dns.env
 cd dns
 
 dnscontrol check      # validate dnsconfig.js — no credentials needed
@@ -56,6 +56,6 @@ permission, so it is safe to run at any time.
   and empty DKIM wildcard exist to make the domain unusable for spoofing. Notification
   email comes from theborderland.se via Mailgun. If commonclearing.org ever needs to send
   mail, all three records must change together.
-- `common-clearing-website.fly.dev` and `common-clearing.fly.dev` do not exist yet.
+- `commonclearing-website.fly.dev` and `commonclearing.fly.dev` do not exist yet.
   `dnscontrol push` will happily create records pointing at them regardless — DNS does not
   validate targets — so deploy the Fly apps first, or expect NXDOMAIN until you do.

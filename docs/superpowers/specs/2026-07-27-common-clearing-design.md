@@ -21,10 +21,10 @@ Its first deployment serves The Borderland 2026, but the tool is general.
 | # | Deliverable | Location |
 |---|---|---|
 | 0 | Development environment | this machine |
-| 1 | `common-clearing` — Rust core, engine, REST/WS API, CLI | `theborderland/common-clearing` |
+| 1 | `commonclearing` — Rust core, engine, REST/WS API, CLI | `theborderland/commonclearing` |
 | 2 | Web frontend — three runtime modes from one codebase | same repo, `web/` |
-| 3 | npm: Node bindings | `@theborderland/common-clearing` |
-| 4 | npm: browser embed library | `@theborderland/common-clearing-embed` |
+| 3 | npm: Node bindings | `@theborderland/commonclearing` |
+| 4 | npm: browser embed library | `@theborderland/commonclearing-embed` |
 | 5 | theglobalburn PR — Library page, API keys page, JWT changes | `hermesloom/theglobalburn` |
 | 6 | Fly deployment + transcript cron | Fly org `the-borderland-267` |
 | 7 | Project website | `commonclearing.org` |
@@ -40,7 +40,7 @@ Rust workspace:
 | `cc-core` | Domain logic: concepts, phrasings, offers, requests, votes, connections, thresholds. Pure — no I/O, no HTTP. Depends only on a `Store` trait. |
 | `cc-store` | oxigraph wrapper: vocabulary constants, SPARQL, quad read/write |
 | `cc-api` | axum 0.8 REST + socketioxide 0.18 WebSockets, JWT auth middleware, notification dispatch |
-| `cc-cli` | binary `common-clearing serve`; config loading; static assets embedded via `rust-embed` |
+| `cc-cli` | binary `commonclearing serve`; config loading; static assets embedded via `rust-embed` |
 | `cc-node` | napi-rs bindings → deliverable 3 |
 
 Plus `web/` (frontend) and `packages/embed/` (deliverable 4).
@@ -259,10 +259,14 @@ Socket.IO at `/ws`, room `cloud`, events `point:new`, `point:merged`, `connectio
 
 ## 10. npm packages
 
-**`@theborderland/common-clearing`** — napi-rs bindings exposing the engine and server to
+Published under the **`theborderland` npm organisation**; `sigalor` is the publishing
+account. CI publishes with an automation token held as a GitHub Actions secret, so no
+individual's credentials are needed for a release.
+
+**`@theborderland/commonclearing`** — napi-rs bindings exposing the engine and server to
 Node. Prebuilt binaries per platform via the standard napi GitHub Actions matrix.
 
-**`@theborderland/common-clearing-embed`** — browser. `CommonClearing.init({ rootUrl, apiKey })`
+**`@theborderland/commonclearing-embed`** — browser. `CommonClearing.init({ rootUrl, apiKey })`
 where `rootUrl` is the *membership platform* root; the library discovers the clearing API
 from a well-known endpoint there. Config resolves from `import.meta.env` / `process.env`
 first and literal arguments second. The README states plainly that inlining a key in HTML is
@@ -292,7 +296,7 @@ polls a cached revocation list. Without this, "revoke" in the UI would be a lie.
 Fly org `the-borderland-267`, region `arn` (co-located with REA and the membership
 platform).
 
-- App `common-clearing`: **single machine + volume `cc_data` at `/data`, snapshots enabled
+- App `commonclearing`: **single machine + volume `cc_data` at `/data`, snapshots enabled
   explicitly** — they are not on by default. A volume binds to one machine in one region,
   so oxigraph cannot scale horizontally. Acceptable: the dataset is small and the
   availability requirement is modest.
@@ -303,7 +307,7 @@ platform).
   `required_burn_slug` scopes it to Borderland 2026, so a visitor without a Borderland
   membership cannot use it under either name. A neutral public demo would need its own app
   and its own identity provider; that is out of scope.
-- App `common-clearing-website`: static, same org.
+- App `commonclearing-website`: static, same org.
 - Multi-stage Dockerfile: Rust build + web build.
 - Secrets: `OPENAI_API_KEY`, `SMTP_*` (shared with theglobalburn, per instruction), VAPID
   keypair.
@@ -368,9 +372,8 @@ public and the cron pushes unreviewed content:
 
 | Item | Owner |
 |---|---|
-| Claim npm scope `@theborderland` | needs an npm account |
-| Create `theborderland/common-clearing` on GitHub | needs API token or web UI |
-| Cloudflare API token in `~/.config/common-clearing/dns.env` | user |
+| Create `theborderland/commonclearing` on GitHub | needs API token or web UI |
+| Cloudflare API token in `~/.config/commonclearing/dns.env` | user |
 | Mailgun SMTP credentials (shared with theglobalburn) | user, via Vercel |
 | Deploy Fly apps before `dnscontrol push`, or accept NXDOMAIN until then | — |
 
