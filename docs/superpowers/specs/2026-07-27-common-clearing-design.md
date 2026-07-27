@@ -149,35 +149,96 @@ Metadata added by the two parties is further relations on that node, written int
 graphs — so provenance is automatic and the metadata editor is a generic quad editor scoped
 to one subject.
 
+### Profile and contact details
+
+Profile data lives in the member's own graph, like everything else. The vCard ontology
+covers the standard fields; messaging handles have no standard vocabulary, so they take
+`cc:` predicates:
+
+```turtle
+cc:user/9f8e… a vcard:Individual ;
+    vcard:hasEmail      <mailto:someone@example.org> ;
+    cc:discordHandle    "someone#1234" ;
+    cc:signalNumber     "+46701234567" ;
+    cc:whatsappNumber   "+46701234567" ;
+    cc:shares           cc:contact/email , cc:contact/signal ;   # opt-in per detail
+    cc:notifyVia        cc:channel/email ;
+    cc:onboardingDone   true .
+```
+
+`cc:shares` is the checkbox state from the profile editor: which details a member is willing
+to disclose when they choose to share with a connection. It is a *permission*, not an act —
+nothing is transmitted until the member taps share on a specific connection (§8).
+
+Storing contact details and the sharing policy in the same graph as everything else means no
+separate profile store, and the member's own graph remains the single place their data lives.
+
+### Concept descriptions — the Lexicon
+
+Every concept may carry a `skos:definition`, editable by any member:
+
+```turtle
+cc:concept/tent skos:definition "A portable shelter of fabric over poles."@en .
+```
+
+Edits are attributed like all else — each member's wording sits in their own graph. Display
+resolves to the **most recent** edit, with the author shown and prior versions readable. Not
+a consensus mechanism: descriptions are documentation, not assertions about matching, so an
+edit war costs clarity rather than correctness.
+
 ### User properties
 
-Per-user state (dismissed install banner, notification channel) is a quad in the user's own
-graph. No side table.
+Remaining per-user state (dismissed install banner) is likewise a quad in the member's own
+graph. No side table anywhere.
 
 ## 5. The clearing engine
 
 1. Member submits free text.
-2. Engine normalises (lowercase, trim, collapse whitespace) and matches spans **exactly**
-   against known `skos:prefLabel`/`skos:altLabel`, proposing an `oa:Annotation` per hit.
-3. Recognised spans bind the offer/request to concepts. Unrecognised text becomes floating
-   phrasings — the population the nerd view renders.
-4. Members may mark spans by hand (§8), correcting or extending what the engine found.
-   Automatic and manual annotations have identical shape and differ only in asserting graph.
-5. Members judge pairs (§6). Merges apply immediately; matches accumulate.
+2. Engine normalises (lowercase, trim, collapse whitespace) and looks for **single words**
+   that have **exactly one** candidate concept by `skos:prefLabel`/`skos:altLabel`.
+3. Each such hit becomes a **proposal**, not an assertion — a `merge` pair in the judging
+   queue. Text with no candidate becomes a floating phrasing, the population the nerd view
+   renders. Words with more than one candidate are left alone; disambiguation is manual
+   marking (§8), not a guess.
+4. Members may also mark spans by hand (§8), creating or extending annotations directly.
+5. Members judge pairs (§6). Confirmed merges apply immediately; matches accumulate.
 6. At 5 distinct graphs asserting `cc:matches` → connection created → notification sent.
+
+**Nothing the engine finds enters the vocabulary on its own.** A proposal is a queue entry
+carrying `cc:proposedBy cc:engine` in the system graph; confirming it writes the
+`oa:Annotation` into the confirming member's graph. This is what makes §1's claim — that
+every semantic decision is a member's — literally true rather than aspirational.
+
+### Recording judgements
+
+Every judgement is recorded, affirmative or not. Without the negative case a rejected pair
+would resurface forever, and `/judge/next` would have no way to know what a member has
+already seen.
+
+| Verdict | Quad written into the judge's graph |
+|---|---|
+| match yes | `(offer, cc:matches, request)` |
+| match no | `(offer, cc:notMatches, request)` |
+| merge yes | the `oa:Annotation` (§4) |
+| merge no | `(span, cc:notRefersTo, concept)` |
+
+"Already judged" is the union of both predicates. Only affirmatives count toward a
+threshold. Idempotency still falls out of quad-set semantics — re-recording a judgement
+changes nothing.
 
 ### Thresholds
 
 | Pair type | Threshold | Rationale |
 |---|---|---|
 | `offer × request` → connection | 5 distinct graphs | A match creates an obligation between two people. |
-| `phrasing × concept` → merge | 1, attributed | Merging is janitorial ("tält" is Swedish for "tent"). Gating it behind 5 votes would leave the board clogged with obvious duplicates nobody confirms five times. Attribution makes it auditable and reversible. |
+| `span × concept` → merge | 1, attributed | Merging is janitorial ("tält" is Swedish for "tent"). Gating it behind 5 votes would leave the board clogged with obvious duplicates nobody confirms five times. Attribution makes it auditable and reversible. |
 
 ### Embeddings
 
 Each novel string is embedded once via OpenAI and cached forever (the string never changes).
-The vector determines **only the x/y coordinate on the nerd view**. It writes no `skos:`
-quad and never decides a merge.
+Vectors are used in exactly two places, both presentational: the x/y coordinate on the nerd
+view, and the ranking of the "similar" block in the annotation dropdown (§8). They write no
+`skos:` quad and never decide a merge.
 
 Projection is **PCA**, not UMAP or t-SNE. The reason is stability, not quality: t-SNE and
 UMAP are stochastic and re-lay-out everything when points are added, destroying the spatial
@@ -252,12 +313,23 @@ session cookie, since a cross-origin PWA has no cookie on that domain.
 
 | Feature | Embedded | Browser | PWA |
 |---|---|---|---|
-| Four-action home | ✓ | ✓ | ✓ |
+| Five-action home | ✓ | ✓ | ✓ |
 | Nerd-view toggle (floating, top right) | ✓ | ✓ | ✓ |
+| Profile menu (top right) | ✓ | ✓ | ✓ |
+| Push as a notification channel | — | — | ✓ |
+| Onboarding (first run) | ✓ | ✓ | ✓ |
 | Install banner (dismissible → quad in user's graph) | ✓ | — | — |
 | OS-detected setup instructions | — | first visit | — |
 | Own login (email + 6-digit code) | — | ✓ | ✓ |
-| Notification settings (top right) | — | — | ✓ |
+
+Home actions: **match · submit offer · submit request · connections · lexicon**. Profile
+lives in the top-right menu rather than on the home grid — it is visited rarely and would
+dilute the four actions that constitute the actual work.
+
+This supersedes the earlier rule that notification settings appear only in standalone mode.
+The menu is present everywhere, because the email/push choice is meaningful in every mode;
+what varies is that **push is offered only where it is actually available**, so a member who
+cannot receive it is never shown a setting that would silently do nothing.
 
 Constraints:
 
@@ -292,12 +364,56 @@ every typo would become a permanent concept and the board would fill with near-d
 Embeddings rank block 2 but decide nothing — the member picks. This is the second and last
 place embeddings appear, and like the nerd-view layout it writes no quad (§16).
 
+### Lexicon
+
+A browsable index of every concept, reachable from the home screen. Each entry shows its
+`skos:prefLabel`, all `skos:altLabel`s, its `skos:definition`, and how many offers and
+requests currently reference it.
+
+**Any member can edit a description.** No role, no threshold — descriptions are documentation
+rather than assertions that drive matching, so the cost of a bad edit is confusion, not a
+wrong connection. Edits are attributed and previous versions remain readable.
+
+The term "lexicon" is used rather than "glossary" or "dictionary" because the thing being
+catalogued is the set of ways members express meanings, which is precisely what a lexicon is.
+
+### Profile and onboarding
+
+The profile editor holds contact details — email, Discord handle, Signal number, WhatsApp
+number — each with a checkbox controlling whether it is *eligible* to be shared. Checking a
+box grants permission; it transmits nothing. It also holds the notification channel, with
+push offered only when the browser actually supports it and permission has been granted.
+
+**Onboarding** runs once, on first visit, and exists to solve one problem: a member with no
+contact details who matches with someone has no way to be reached. It offers their
+membership-platform email as a default contact method, addable with a single tap, and is
+**skippable** — skipping sets `cc:onboardingDone` immediately and never asks again. The flag
+is a quad in the member's own graph like everything else.
+
+Making it skippable is deliberate. An onboarding that cannot be dismissed teaches members to
+click past whatever is in front of them, which is exactly the habit not to build in a system
+that later asks them to make careful judgements.
+
+### Sharing contact details with a connection
+
+From the connections list, tapping a connection opens it. There, **one tap shares** the
+contact details the member has marked eligible in their profile with the other party. The
+details are delivered through that person's chosen notification channel.
+
+Two properties worth stating explicitly:
+
+- **Sharing is per-connection and deliberate.** Eligibility in the profile is necessary but
+  not sufficient; nothing leaves until the member acts on that specific connection.
+- **It is one-directional.** Sharing does not request or entitle you to the other person's
+  details. They decide separately. A reciprocal-by-default design would make the first tap
+  carry consequences the member did not choose.
+
 ### Notifications
 
-Email is the default and the only channel for members who never install the PWA. The
-settings wheel appears only in standalone mode, so a member who cannot receive push is never
-offered it. Email must therefore be genuinely useful: name the offer, name the request, and
-link directly into the connection view.
+Email is the default and the only channel for members who never install the PWA. Email must
+therefore be genuinely useful: name the offer, name the request, and link directly into the
+connection view. The same applies to a contact-sharing notification — it must carry the
+details themselves, not merely announce that something happened.
 
 ## 9. API
 
@@ -317,9 +433,14 @@ DELETE /annotations/:id      retract your own annotation
 GET  /connections
 GET  /connections/:id
 POST /connections/:id/metadata
+POST /connections/:id/share  share eligible contact details, one tap
+GET  /lexicon                ?q=… → concepts with labels, definition, usage counts
+GET  /lexicon/:id
+PUT  /lexicon/:id/definition { text }   any member
+GET  /profile
+PATCH /profile               contact details, cc:shares flags, cc:notifyVia
+POST /profile/onboarding     { action: "accept"|"skip" } → sets cc:onboardingDone
 GET  /cloud                  points: { id, text, x, y }
-GET  /settings
-PATCH /settings
 POST /push/subscribe
 GET  /public/library/:key    read-only, for the embed library
 ```
@@ -439,8 +560,14 @@ public and the cron pushes unreviewed content:
 
 ## 14. Testing
 
-- `cc-core` is pure: unit tests against an in-memory store. The case that matters most is
-  that the same member voting twice does not advance the count.
+- `cc-core` is pure: unit tests against an in-memory store. The cases that matter most:
+  - the same member voting twice does not advance the count;
+  - a judged pair — affirmative *or* negative — is never served again to that member;
+  - an engine proposal writes nothing until a member confirms it.
+- **Contact sharing gets its own tests, treated as privacy-critical.** A detail not marked
+  eligible must never be transmitted; sharing must reach only the counterparty of that one
+  connection; and sharing must stay one-directional. These are the failures that would harm
+  a member personally rather than merely producing a wrong answer.
 - `cc-store`: round-trip tests against a temporary oxigraph instance.
 - `cc-api`: integration tests with a locally-minted JWKS so auth is genuinely exercised —
   including **expired-token rejection**, the bug REA has.
