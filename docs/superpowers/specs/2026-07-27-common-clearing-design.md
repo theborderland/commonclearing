@@ -90,6 +90,36 @@ cc:offer/a1b2  a schema:Offer ;
 
 `schema:Demand` for requests.
 
+### Spans — Web Annotation Data Model
+
+A concept is bound to a **union of character ranges** within an offer or request, not to the
+whole text. Ranges may be disjoint. The W3C Web Annotation Data Model (`oa:`) covers this
+exactly, so no custom vocabulary is invented:
+
+```turtle
+cc:span/x1 a oa:Annotation ;
+    oa:motivatedBy oa:linking ;
+    oa:hasBody cc:concept/tent ;
+    oa:hasTarget [ a oa:Composite ;
+        oa:item [ a oa:SpecificResource ;
+                  oa:hasSource cc:offer/a1b2 ;
+                  oa:hasSelector [ a oa:TextPositionSelector ; oa:start 7 ; oa:end 11 ] ,
+                                 [ a oa:TextQuoteSelector ; oa:exact "tent" ] ] ,
+                [ a oa:SpecificResource ;
+                  oa:hasSource cc:offer/a1b2 ;
+                  oa:hasSelector [ a oa:TextPositionSelector ; oa:start 24 ; oa:end 31 ] ] ] .
+```
+
+`oa:Composite` means "all of these together" — a true union, as opposed to multiple
+selectors on one target, which the spec reads as alternative refinements of the same range.
+
+Each range carries both a `TextPositionSelector` (offsets) and a `TextQuoteSelector` (the
+literal text). The quote is redundant until offsets drift, at which point it is the only way
+to recover the anchor.
+
+Annotations live in the annotating member's named graph like everything else, so span
+marking is attributed and reversible with no additional mechanism.
+
 ### Attribution is the fourth element
 
 Every quad is written into the asserting user's named graph, `cc:user/<sha256(email)>`.
@@ -128,11 +158,13 @@ graph. No side table.
 
 1. Member submits free text.
 2. Engine normalises (lowercase, trim, collapse whitespace) and matches spans **exactly**
-   against known `skos:prefLabel`/`skos:altLabel`.
-3. Recognised spans bind the offer/request to concepts. Unrecognised spans become floating
+   against known `skos:prefLabel`/`skos:altLabel`, proposing an `oa:Annotation` per hit.
+3. Recognised spans bind the offer/request to concepts. Unrecognised text becomes floating
    phrasings — the population the nerd view renders.
-4. Members judge pairs (§6). Merges apply immediately; matches accumulate.
-5. At 5 distinct graphs asserting `cc:matches` → connection created → notification sent.
+4. Members may mark spans by hand (§8), correcting or extending what the engine found.
+   Automatic and manual annotations have identical shape and differ only in asserting graph.
+5. Members judge pairs (§6). Merges apply immediately; matches accumulate.
+6. At 5 distinct graphs asserting `cc:matches` → connection created → notification sent.
 
 ### Thresholds
 
@@ -157,11 +189,20 @@ lossy 2D one and is the actual merge affordance anyway.
 ## 6. One judging queue
 
 There is no separate merge interface. Merging and matching are the same gesture on a
-discriminated pair:
+discriminated pair, distinguished only by the question asked:
 
-- `kind: "match"` — an offer and a request, side by side. "Should these connect?"
-- `kind: "merge"` — either a phrasing and a concept ("does this phrasing mean this?", asserts
-  `skos:altLabel`) or two concepts ("are these the same thing?", asserts `skos:exactMatch`).
+| `kind` | Question | Sides | Effect |
+|---|---|---|---|
+| `match` | **"Does this fit together?"** | an offer and a request | 5 votes → connection |
+| `merge` | **"Does this mean the same?"** | a span and a concept (asserts `skos:altLabel`), or two concepts (asserts `skos:exactMatch`) | 1 vote, attributed |
+
+Both questions are answerable without documentation, and their parallel phrasing makes the
+switch between pair types feel like one activity rather than two.
+
+**Merge cards always show their source.** The span side is rendered highlighted inside the
+full offer or request text it came from. Without that context the judgement is often
+impossible — "shelter for two" against `tent` is ambiguous until you can see whether the
+sentence was about camping or about housing someone.
 
 Same card, same swipe, different threshold. The home screen offers four actions:
 **match · submit offer · submit request · connections**.
@@ -227,6 +268,30 @@ Constraints:
 - **Speech input** uses the Web Speech API. The microphone button is not rendered when
   `SpeechRecognition` is unavailable rather than shown and failing.
 
+### Marking spans
+
+Open to **all members**, not gated behind a role — consistent with everything else members
+do here. A `annotation.restricted_to_role` config flag exists so it can be narrowed later
+without a migration.
+
+The interaction is text-marker style: select characters in an offer or request the way you
+would with a highlighter, including **disjoint selections** (shift/ctrl-extend on desktop,
+tap-to-add on touch). Releasing the selection opens a dropdown immediately, ranked:
+
+1. **Exact** — concepts whose `prefLabel`/`altLabel` normalises to the selected text. Marking
+   "tent" or "tält" surfaces `cc:concept/tent` at the top, alongside every other concept
+   recorded as reasonably referred to by that string.
+2. **Similar** — concepts whose labels are cosine-near the selection, visually separated from
+   the exact block so the distinction stays legible.
+3. **Create new concept…** — always last, always an explicit choice.
+
+Creating a concept is never implicit. An interface that manufactures a concept at typing
+speed would work directly against the deduplication the whole system exists to perform:
+every typo would become a permanent concept and the board would fill with near-duplicates.
+
+Embeddings rank block 2 but decide nothing — the member picks. This is the second and last
+place embeddings appear, and like the nerd-view layout it writes no quad (§16).
+
 ### Notifications
 
 Email is the default and the only channel for members who never install the PWA. The
@@ -243,8 +308,12 @@ POST /auth/exchange          theglobalburn JWT → cc session
 GET  /me
 POST /offers                 { text }
 POST /requests               { text }
-GET  /judge/next             → { kind: "match"|"merge", left, right }
+GET  /judge/next             → { kind: "match"|"merge", left, right, source? }
 POST /judge                  { pairId, verdict }
+GET  /concepts/suggest       ?text=… → ranked { exact[], similar[] }
+POST /annotations            { sourceId, ranges: [{start,end}], conceptId }
+POST /concepts               { label }   explicit creation only
+DELETE /annotations/:id      retract your own annotation
 GET  /connections
 GET  /connections/:id
 POST /connections/:id/metadata
@@ -380,19 +449,35 @@ public and the cron pushes unreviewed content:
 
 ## 15. Open items
 
-| Item | Owner |
-|---|---|
-| Create `theborderland/commonclearing` on GitHub | needs API token or web UI |
-| Cloudflare API token in `~/.config/commonclearing/dns.env` | user |
-| Mailgun SMTP credentials (shared with theglobalburn) | user, via Vercel |
-| Deploy Fly apps before `dnscontrol push`, or accept NXDOMAIN until then | — |
+Done: repo created and pushed; Cloudflare token in place; `commonclearing.org` DNS pushed
+(8 records, 0 drift); flyctl authenticated to `the-borderland-267`; DNSControl working.
+
+Remaining:
+
+| Item | Owner | Blocks |
+|---|---|---|
+| `clearing.theborderland.se` record in SolidCP (`cp.webaccess.se`) | user | deploy |
+| Fly secrets: `SMTP_*`, `OPENAI_API_KEY`, VAPID keypair | user, via `fly secrets set` | deploy |
+| Rust toolchain on the dev machine | — | implementation |
+| npm automation token as a GitHub Actions secret | user | package release |
+
+`theborderland.se` runs on `ns1–3.poise.se` and is administered through SolidCP, which
+DNSControl does not support (69 providers, none matching). One record created by hand is
+cheaper than automating an unsupported panel; `rea.theborderland.se` was created the same
+way. Exact values come from `fly certs add` once the app exists.
+
+Credentials go straight into `fly secrets set` by the user. They are never transmitted
+through the design conversation, so there is nothing for the transcript scrubber (§13) to
+catch.
 
 ## 16. Deliberate non-goals
 
-- **No algorithmic matching.** Embeddings position points on a board; they never write a
-  quad. If a similarity score could create a merge, the human curation this system exists
-  for would be undermined, and wrong merges would be invisible because a silent auto-merge
-  produces no artifact to review.
+- **No algorithmic matching.** Embeddings do exactly two things: position points on the nerd
+  view (§5) and rank the "similar" block of the annotation dropdown (§8). Both are
+  presentation. Neither writes a quad, and in both cases a member makes the decision. If a
+  similarity score could create a merge, the human curation this system exists for would be
+  undermined — and wrong merges would be invisible, because a silent auto-merge produces no
+  artifact for anyone to review.
 - **No user database.** Identity comes from theglobalburn. Common Clearing stores
   attribution, not credentials.
 - **No horizontal scaling.** One machine, one volume. Revisit only if the dataset outgrows
