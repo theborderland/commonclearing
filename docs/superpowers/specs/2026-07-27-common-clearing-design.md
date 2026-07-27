@@ -265,8 +265,8 @@ full offer or request text it came from. Without that context the judgement is o
 impossible — "shelter for two" against `tent` is ambiguous until you can see whether the
 sentence was about camping or about housing someone.
 
-Same card, same swipe, different threshold. The home screen offers four actions:
-**match · submit offer · submit request · connections**.
+Same card, same swipe, different threshold. Matching is one of the six actions the home
+screen offers (§8).
 
 The server issues each pair with a short-lived `pairId` that identifies both sides, so
 `POST /judge` carries an opaque id plus a verdict rather than the client naming IRIs
@@ -313,22 +313,22 @@ session cookie, since a cross-origin PWA has no cookie on that domain.
 
 | Feature | Embedded | Browser | PWA |
 |---|---|---|---|
-| Five-action home | ✓ | ✓ | ✓ |
+| Six-action home | ✓ | ✓ | ✓ |
 | Nerd-view toggle (floating, top right) | ✓ | ✓ | ✓ |
-| Profile menu (top right) | ✓ | ✓ | ✓ |
 | Push as a notification channel | — | — | ✓ |
 | Onboarding (first run) | ✓ | ✓ | ✓ |
 | Install banner (dismissible → quad in user's graph) | ✓ | — | — |
 | OS-detected setup instructions | — | first visit | — |
 | Own login (email + 6-digit code) | — | ✓ | ✓ |
 
-Home actions: **match · submit offer · submit request · connections · lexicon**. Profile
-lives in the top-right menu rather than on the home grid — it is visited rarely and would
-dilute the four actions that constitute the actual work.
+Home actions: **match · submit offer · submit request · connections · lexicon · profile**.
+Profile is a home action like the rest, not a chrome affordance tucked into a corner menu —
+there is exactly one place to go to do anything, in every mode.
 
-This supersedes the earlier rule that notification settings appear only in standalone mode.
-The menu is present everywhere, because the email/push choice is meaningful in every mode;
-what varies is that **push is offered only where it is actually available**, so a member who
+Notification settings live inside profile, so there is no separate settings menu. This
+supersedes the earlier rule that notification settings appear only in standalone mode:
+profile is reachable everywhere, because the email/push choice is meaningful in every mode.
+What varies is that **push is offered only where it is actually available**, so a member who
 cannot receive it is never shown a setting that would silently do nothing.
 
 Constraints:
