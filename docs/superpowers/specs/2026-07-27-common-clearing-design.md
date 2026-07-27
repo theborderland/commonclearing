@@ -577,7 +577,8 @@ public and the cron pushes unreviewed content:
 ## 15. Open items
 
 Done: repo created and pushed; Cloudflare token in place; `commonclearing.org` DNS pushed
-(8 records, 0 drift); flyctl authenticated to `the-borderland-267`; DNSControl working.
+(8 records, 0 drift); flyctl authenticated to `the-borderland-267`; DNSControl working;
+Rust 1.97.1 installed via rustup and verified to build and link on this machine.
 
 Remaining:
 
@@ -585,7 +586,6 @@ Remaining:
 |---|---|---|
 | `clearing.theborderland.se` record in SolidCP (`cp.webaccess.se`) | user | deploy |
 | Fly secrets: `SMTP_*`, `OPENAI_API_KEY`, VAPID keypair | user, via `fly secrets set` | deploy |
-| Rust toolchain on the dev machine | — | implementation |
 | npm automation token as a GitHub Actions secret | user | package release |
 
 `theborderland.se` runs on `ns1–3.poise.se` and is administered through SolidCP, which
