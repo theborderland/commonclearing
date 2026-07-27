@@ -50,8 +50,20 @@ permission, so it is safe to run at any time.
 - **Apex uses `ALIAS`**, not `A`/`AAAA`. Cloudflare flattens it at the edge, so the site
   survives Fly changing its anycast IPs. Fly's IPs are not contractually stable, so
   hardcoding them would rot silently.
-- **CAA restricts issuance to Let's Encrypt**, which is what Fly provisions. If certs are
-  ever moved to another CA, this record must be updated *first* or issuance will fail.
+- **CAA does not restrict issuance to Let's Encrypt alone**, despite what `dnsconfig.js`
+  asks for. Whenever a zone has any CAA record, Cloudflare synthesises additional `issue`
+  and `issuewild` entries for its own Universal SSL partner CAs — comodoca.com,
+  digicert.com, pki.goog and ssl.com — directly into DNS responses. They are not stored as
+  zone records, so `dnscontrol preview` neither shows nor removes them; verify with an
+  external resolver, not the Cloudflare dashboard.
+
+  Two consequences: five CAs can issue for this domain, not one; and the `issuewild ";"`
+  ("no wildcards") is defeated, because the injected `issuewild` entries permit wildcards
+  from those CAs. Accepted deliberately — all five are reputable and domain-validated, and
+  the record still excludes every other CA. Disabling Universal SSL (SSL/TLS → Edge
+  Certificates) would stop the injection, at the cost of a zone-wide change this site does
+  not need. If certs ever move to a CA outside that set, update `dnsconfig.js` *first* or
+  issuance will fail.
 - **This domain sends no email.** The null SPF (`v=spf1 -all`), `p=reject` DMARC policy,
   and empty DKIM wildcard exist to make the domain unusable for spoofing. Notification
   email comes from theborderland.se via Mailgun. If commonclearing.org ever needs to send

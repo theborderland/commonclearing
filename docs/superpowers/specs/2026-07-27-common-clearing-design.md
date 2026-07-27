@@ -340,10 +340,17 @@ provider = "openai"
 
 ### DNS
 
-`commonclearing.org` via DNSControl against Cloudflare (`dns/`). Apex and `www` → website,
-`app` → reference instance, all `ALIAS`/`CNAME` to `*.fly.dev` so Cloudflare's flattening
-absorbs Fly IP changes. CAA restricts issuance to Let's Encrypt. Null SPF, `p=reject` DMARC
-and an empty DKIM wildcard make the domain unusable for spoofing, since it sends no mail.
+`commonclearing.org` via DNSControl against Cloudflare (`dns/`). Apex and `www` → website
+via `ALIAS`/`CNAME` to `*.fly.dev`, so Cloudflare's flattening absorbs Fly IP changes. Null
+SPF, `p=reject` DMARC and an empty DKIM wildcard make the domain unusable for spoofing,
+since it sends no mail.
+
+CAA authorises Let's Encrypt, which is what Fly provisions — but note that Cloudflare
+synthesises additional `issue`/`issuewild` entries for its Universal SSL partner CAs
+(comodoca.com, digicert.com, pki.goog, ssl.com) into DNS responses for any zone that has
+CAA records. So issuance is restricted to those five plus Let's Encrypt rather than to Let's
+Encrypt alone, and the `issuewild ";"` is defeated. Accepted deliberately; see
+`dns/README.md`.
 
 ## 13. Transcript cron
 
